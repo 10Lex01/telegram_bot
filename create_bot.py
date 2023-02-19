@@ -1,10 +1,12 @@
 from aiogram import Bot
 from aiogram.dispatcher import Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+import os
+from dotenv import load_dotenv, find_dotenv
 
-TOKEN = '5945096956:AAE4ce2vMtFqwHnq-pmJVDLi8A8hw1ILPWk'
+load_dotenv(find_dotenv())
 
-storage=MemoryStorage()
+storage = MemoryStorage()
 
-bot = Bot(token=TOKEN)
+bot = Bot(os.getenv('TOKEN'))
 dp = Dispatcher(bot, storage=storage)
