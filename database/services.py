@@ -9,4 +9,5 @@ def add_to_database(data: Dict) -> None:
         user = tables.User(**data)
         session.add(user)
         session.commit()
+        print(user)
 

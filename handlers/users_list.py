@@ -118,6 +118,7 @@ class FSMAddUser(StatesGroup):
     user_name = State()
     balance = State()
     date_expiration = State()
+    description = State()
 
 
 async def start_FSM_add_user(message: types.Message):
@@ -153,15 +154,21 @@ async def add_date_expiration(message: types.Message, state: FSMContext):
             try:
                 formated_date = datetime.strptime(message.text, "%d.%m.%Y").date()
                 data['date_expiration'] = formated_date
-                add_to_database(data)
-            except Exception as e:
-                print(e)
+            except ValueError:
                 await message.reply('Введите дату в формате: ДД.ММ.ГГГГ')
-            await message.answer('Данные успешно добавлены', reply_markup=kb_users_list)
-        await state.finish()
+            await message.answer('Введите примечание для пользователя', reply_markup=kb_users_list)
+        await FSMAddUser.description.set()
     else:
         await message.reply('Не верный формат\nВведите дату в формате: ДД.ММ.ГГГГ')
 
+
+async def add_description(message: types.Message, state: FSMContext):
+    """Отлавливаем примечание"""
+    async with state.proxy() as data:
+        data['description'] = message.text
+        add_to_database(data)
+        await message.answer('Данные успешно добавлены', reply_markup=kb_users_list)
+    await state.finish()
 
 def register_handlers_users(dp: Dispatcher):
     dp.register_message_handler(start_bot, commands=['start'])
@@ -185,3 +192,4 @@ def register_handlers_users(dp: Dispatcher):
     dp.register_message_handler(add_new_user_name, state=FSMAddUser.user_name)
     dp.register_message_handler(add_start_user_balance, state=FSMAddUser.balance)
     dp.register_message_handler(add_date_expiration, state=FSMAddUser.date_expiration)
+    dp.register_message_handler(add_description, state=FSMAddUser.description)
