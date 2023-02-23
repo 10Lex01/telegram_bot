@@ -11,5 +11,4 @@ Base = declarative_base()
 
 
 def create_db():
-    print('sdfada')
     Base.metadata.create_all(engine)

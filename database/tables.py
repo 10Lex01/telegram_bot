@@ -9,3 +9,9 @@ class User(Base):
     user_name = Column(String, unique=True)
     balance = Column(Integer)
     date_expiration = Column(Date)
+
+    def __repr__(self):
+        return f"User(id={self.id!r}, " \
+               f"user_name={self.user_name!r}, " \
+               f"balance={self.balance!r}, " \
+               f"transfer_date={self.date_expiration!r})"
