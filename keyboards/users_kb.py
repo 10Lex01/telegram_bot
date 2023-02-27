@@ -1,7 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from datetime import datetime, timedelta
-from database.database import Session
-from database.tables import User
 
 # Клавиатура - Список пользователей и Список должников
 kb_users_list = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -36,22 +34,20 @@ b7 = InlineKeyboardButton(text=f'{tomorrow.strftime("%d.%m.%Y")}',
 transfer_date_keyboard.add(b5).insert(b6).insert(b7)
 
 
-def create_user_keyboard(user):
+def create_user_keyboard(username):
     keyboard = InlineKeyboardMarkup(row_width=2)
-    button1 = InlineKeyboardButton(text='Баланс', callback_data=f'balance*{user}')
-    button2 = InlineKeyboardButton(text='Пополнить', callback_data=f'deposit*{user}')
+    button1 = InlineKeyboardButton(text='Баланс', callback_data=f'balance*{username}')
+    button2 = InlineKeyboardButton(text='Пополнить', callback_data=f'deposit*{username}')
     return keyboard.add(button1).insert(button2)
 
 
-def create_users_list_keyboard():
+def create_users_list_keyboard(users):
     kb_users = InlineKeyboardMarkup(row_width=2)
     buttons = []
-    with Session() as session:
-        user = session.query(User).all()
-        for u in user:
-            button = InlineKeyboardButton(text=f'{u.user_name}', callback_data=f'user*{u.user_name}')
-            buttons.append(button)
-        return kb_users.add(*buttons)
+    for user in users:
+        button = InlineKeyboardButton(text=f'{user.user_name}', callback_data=f'user*{user.user_name}')
+        buttons.append(button)
+    return kb_users.add(*buttons)
 
 
 def create_debtors_keyboard(debtors):

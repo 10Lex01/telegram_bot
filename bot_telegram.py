@@ -2,8 +2,6 @@ from aiogram.utils import executor
 from create_bot import dp
 from database.database import create_db
 from handlers import users_list
-from database import tables
-from database.database import Session
 
 
 async def on_startup(_):

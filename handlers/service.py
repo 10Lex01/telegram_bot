@@ -1,3 +1,7 @@
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+
 def check_date(message):
     if not len(message.text.split('.')) == 3:
         return False
@@ -11,7 +15,12 @@ def check_date(message):
             return False
         if not y > 2020:
             return False
-    except:
+    except Exception:
         return False
     return True
 
+
+def calculate_expiration_date(date, balance):
+    monthly_balance = int(int(balance) // 100)
+    date = datetime.strptime(date, "%d.%m.%Y").date() + relativedelta(months=monthly_balance)
+    return date
