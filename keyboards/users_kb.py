@@ -1,5 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from datetime import datetime, timedelta
+from database.database import Session
+from database.tables import User
 
 # Клавиатура - Список пользователей и Список должников
 kb_users_list = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -41,13 +43,15 @@ def create_user_keyboard(user):
     return keyboard.add(button1).insert(button2)
 
 
-def create_users_list_keyboard(users):
+def create_users_list_keyboard():
     kb_users = InlineKeyboardMarkup(row_width=2)
     buttons = []
-    for name in users:
-        button = InlineKeyboardButton(text=name, callback_data=f'user*{name}')
-        buttons.append(button)
-    return kb_users.add(*buttons)
+    with Session() as session:
+        user = session.query(User).all()
+        for u in user:
+            button = InlineKeyboardButton(text=f'{u.user_name}', callback_data=f'user*{u.user_name}')
+            buttons.append(button)
+        return kb_users.add(*buttons)
 
 
 def create_debtors_keyboard(debtors):

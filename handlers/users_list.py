@@ -1,8 +1,9 @@
 from datetime import datetime
-
 from aiogram import types, Dispatcher
 
+from database.database import Session
 from database.services import add_to_database
+from database.tables import User
 from handlers.service import check_date
 from keyboards import kb_users_list, create_users_list_keyboard, create_debtors_keyboard,\
      create_user_keyboard, balance_keyboard, transfer_date_keyboard
@@ -11,8 +12,6 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
 
-
-users = ['Санек', 'Кирилл', 'Кристина', 'Леха']
 debtors = ['Василий', 'Акакий', 'Вазген', 'Сэргей']
 
 
@@ -23,11 +22,11 @@ async def start_bot(message: types.Message):
 
 async def get_user_list(message: types.Message):
     """Открывает клавиатуру списка пользователей"""
-    await message.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
+    await message.answer('Список пользователей:', reply_markup=create_users_list_keyboard())
 
 
 async def get_debtors_list(message: types.Message):
-    """Открывает клавиатуру списка должноков"""
+    """Открывает клавиатуру списка должников"""
     await message.answer('Список должников:', reply_markup=create_debtors_keyboard(debtors))
 
 
@@ -40,7 +39,11 @@ async def get_user_menu(callback: types.CallbackQuery):
 async def get_user_balance(callback: types.CallbackQuery):
     """Inline клавиатура "Баланс" для пользователя"""
     user = callback.data.split('*')[1]
-    await bot.send_message(chat_id=callback.message.chat.id, text=f'Баланс {user} = 1000')
+    with Session() as session:
+        user_db = session.query(User).all()
+        for b in user_db:
+            if user == f'{b.user_name}':
+                await bot.send_message(chat_id=callback.message.chat.id, text=f'Баланс {user} = {b.balance}')
 
 
 class FSMUsers(StatesGroup):
@@ -111,7 +114,7 @@ async def cancel_fsm(message: types.Message, state: FSMContext):
         return
     await state.finish()
     await message.answer('OK', reply_markup=kb_users_list)
-    await message.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
+    await message.answer('Список пользователей:', reply_markup=create_users_list_keyboard())
 
 
 class FSMAddUser(StatesGroup):
@@ -121,7 +124,7 @@ class FSMAddUser(StatesGroup):
     description = State()
 
 
-async def start_FSM_add_user(message: types.Message):
+async def start_fsm_add_user(message: types.Message):
     """Добавление нового пользователя"""
     await FSMAddUser.user_name.set()
     await message.answer('Введите имя пользователя')
@@ -191,6 +194,7 @@ async def add_description(message: types.Message, state: FSMContext):
         await message.answer('Данные успешно добавлены', reply_markup=kb_users_list)
     await state.finish()
 
+
 def register_handlers_users(dp: Dispatcher):
     dp.register_message_handler(start_bot, commands=['start'])
     dp.register_message_handler(get_user_list, text='Список пользователей')
@@ -209,7 +213,7 @@ def register_handlers_users(dp: Dispatcher):
                                        state=FSMUsers.transfer_date)
     dp.register_message_handler(transfer_date_user_message, state=FSMUsers.transfer_date)
 
-    dp.register_message_handler(start_FSM_add_user, text='Добавить пользователя')
+    dp.register_message_handler(start_fsm_add_user, text='Добавить пользователя')
     dp.register_message_handler(add_new_user_name, state=FSMAddUser.user_name)
     dp.register_callback_query_handler(add_start_user_balance_button,
                                        lambda callback: callback.data.split('*')[0] == 'money',
