@@ -132,10 +132,20 @@ async def add_new_user_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['user_name'] = message.text
     await FSMAddUser.balance.set()
-    await message.answer('Введите стартовый баланс')
+    await message.answer('Введите стартовый баланс', reply_markup=balance_keyboard)
 
 
-async def add_start_user_balance(message: types.Message, state: FSMContext):
+async def add_start_user_balance_button(callback: types.CallbackQuery, state: FSMContext):
+    """Отлавливаем баланс, запрашиваем дату истечения срока оплаты"""
+    balance = callback.data.split('*')[1]
+    async with state.proxy() as data:
+        data['balance'] = int(balance)
+    await FSMAddUser.date_expiration.set()
+    await bot.send_message(chat_id=callback.message.chat.id, text='Введите дату истечения срока оплаты',
+                           reply_markup=transfer_date_keyboard)
+
+
+async def add_start_user_balance_message(message: types.Message, state: FSMContext):
     """Отлавливаем баланс, запрашиваем дату истечения срока оплаты"""
     async with state.proxy() as data:
         try:
@@ -147,7 +157,18 @@ async def add_start_user_balance(message: types.Message, state: FSMContext):
     await message.answer('Введите дату истечения срока оплаты')
 
 
-async def add_date_expiration(message: types.Message, state: FSMContext):
+async def add_date_expiration_button(callback: types.CallbackQuery, state: FSMContext):
+    """Отлавливаем дату истечения срока оплаты"""
+    date_expiration = callback.data.split('*')[1]
+    async with state.proxy() as data:
+        formated_date = datetime.strptime(date_expiration, "%d.%m.%Y").date()
+        data['date_expiration'] = formated_date
+        await bot.send_message(chat_id=callback.message.chat.id,
+                               text='Введите примечание для пользователя', reply_markup=kb_users_list)
+    await FSMAddUser.description.set()
+
+
+async def add_date_expiration_message(message: types.Message, state: FSMContext):
     """Отлавливаем дату истечения срока оплаты"""
     if check_date(message):
         async with state.proxy() as data:
@@ -184,12 +205,18 @@ def register_handlers_users(dp: Dispatcher):
                                        state=FSMUsers.balance)
     dp.register_message_handler(balance_user_message, state=FSMUsers.balance)
     dp.register_callback_query_handler(transfer_date_user_button,
-                                       lambda callback: callback.data.split('*')[0] == 'transfer_date',
+                                       lambda callback: callback.data.split('*')[0] == 'date_expiration',
                                        state=FSMUsers.transfer_date)
     dp.register_message_handler(transfer_date_user_message, state=FSMUsers.transfer_date)
 
     dp.register_message_handler(start_FSM_add_user, text='Добавить пользователя')
     dp.register_message_handler(add_new_user_name, state=FSMAddUser.user_name)
-    dp.register_message_handler(add_start_user_balance, state=FSMAddUser.balance)
-    dp.register_message_handler(add_date_expiration, state=FSMAddUser.date_expiration)
+    dp.register_callback_query_handler(add_start_user_balance_button,
+                                       lambda callback: callback.data.split('*')[0] == 'money',
+                                       state=FSMAddUser.balance)
+    dp.register_message_handler(add_start_user_balance_message, state=FSMAddUser.balance)
+    dp.register_callback_query_handler(add_date_expiration_button,
+                                       lambda callback: callback.data.split('*')[0] == 'date_expiration',
+                                       state=FSMAddUser.date_expiration)
+    dp.register_message_handler(add_date_expiration_message, state=FSMAddUser.date_expiration)
     dp.register_message_handler(add_description, state=FSMAddUser.description)

@@ -21,13 +21,16 @@ b6 = InlineKeyboardButton(text='300', callback_data='money*300')
 balance_keyboard.add(b4).insert(b5).insert(b6)
 
 # Клавиатура для ввода даты активации пользователя
+yesterday = datetime.now() - timedelta(days=1)
+today = datetime.now()
+tomorrow = datetime.now() - timedelta(days=-1)
 transfer_date_keyboard = InlineKeyboardMarkup(row_width=3)
-b5 = InlineKeyboardButton(text=f'{(datetime.now() - timedelta(days=1)).strftime("%d.%m.%Y")}',
-                          callback_data=f'transfer_date*{(datetime.now() - timedelta(days=1)).strftime("%d.%m.%Y")}')
-b6 = InlineKeyboardButton(text=f'{datetime.now().strftime("%d.%m.%Y")}',
-                          callback_data=f'transfer_date*{datetime.now().strftime("%d.%m.%Y")}')
-b7 = InlineKeyboardButton(text=f'{(datetime.now() - timedelta(days=-1)).strftime("%d.%m.%Y")}',
-                          callback_data=f'transfer_date*{(datetime.now() - timedelta(days=-1)).strftime("%d.%m.%Y")}')
+b5 = InlineKeyboardButton(text=f'{yesterday.strftime("%d.%m.%Y")}',
+                          callback_data=f'date_expiration*{yesterday.strftime("%d.%m.%Y")}')
+b6 = InlineKeyboardButton(text=f'{today.strftime("%d.%m.%Y")}',
+                          callback_data=f'date_expiration*{today.strftime("%d.%m.%Y")}')
+b7 = InlineKeyboardButton(text=f'{tomorrow.strftime("%d.%m.%Y")}',
+                          callback_data=f'date_expiration*{tomorrow.strftime("%d.%m.%Y")}')
 transfer_date_keyboard.add(b5).insert(b6).insert(b7)
 
 
