@@ -36,9 +36,11 @@ transfer_date_keyboard.add(b5).insert(b6).insert(b7)
 
 def create_user_keyboard(username):
     keyboard = InlineKeyboardMarkup(row_width=2)
-    button1 = InlineKeyboardButton(text='Баланс', callback_data=f'balance*{username}')
+    button1 = InlineKeyboardButton(text='Информация', callback_data=f'balance*{username}')
     button2 = InlineKeyboardButton(text='Пополнить', callback_data=f'deposit*{username}')
-    return keyboard.add(button1).insert(button2)
+    button3 = InlineKeyboardButton(text='Удалить', callback_data=f'delete_this_user*{username}')
+    button4 = InlineKeyboardButton(text='Назад', callback_data='back')
+    return keyboard.add(button1).insert(button2).insert(button3).insert(button4)
 
 
 def create_users_list_keyboard(users):

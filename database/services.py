@@ -31,3 +31,9 @@ def update_balance_and_date_for_user(user_name, balance, transfer_date):
         user.balance += int(balance)
         user.date_expiration = date_expiration
         session.commit()
+
+
+def delete_user_from_db(user_name):
+    with Session() as session:
+        session.query(tables.User).filter_by(user_name=user_name).delete()
+        session.commit()

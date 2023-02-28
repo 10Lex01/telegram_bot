@@ -1,7 +1,7 @@
 from datetime import datetime
 from aiogram import types, Dispatcher
 from database.services import add_to_database, get_all_users_from_db, get_user_balance_from_db, \
-    update_balance_and_date_for_user
+    update_balance_and_date_for_user, delete_user_from_db
 from handlers.service import check_date, calculate_expiration_date
 from keyboards import kb_users_list, create_users_list_keyboard, create_debtors_keyboard,\
      create_user_keyboard, balance_keyboard, transfer_date_keyboard
@@ -42,7 +42,12 @@ async def get_user_balance(callback: types.CallbackQuery):
     """Inline клавиатура "Баланс" для пользователя"""
     user_name = callback.data.split('*')[1]
     user = get_user_balance_from_db(user_name)
-    await bot.send_message(chat_id=callback.message.chat.id, text=f'Баланс {user.user_name}: {user.balance} ₽')
+    await bot.send_message(chat_id=callback.message.chat.id,
+                           text=f'Пользователь: {user.user_name}\n'
+                                f'Баланс: {user.balance} ₽\n'
+                                f'Дата истечения срока: {user.date_expiration}\n'
+                                f'Примечание: {user.description}',
+                           reply_markup=create_user_keyboard(user.user_name))
 
 
 class FSMUsers(StatesGroup):
@@ -61,61 +66,46 @@ async def update_user_balance(callback: types.CallbackQuery, state=None):
                                reply_markup=balance_keyboard)
 
 
-async def add_user_deposit_button(callback: types.CallbackQuery, state: FSMContext):
+async def add_user_deposit(request: types.CallbackQuery | types.Message, state: FSMContext):
     """Ввод данных о пополнении баланса через Inline клавиатуру"""
-    cash = callback.data.split('*')[1]
-    async with state.proxy() as data:
-        user = data['user_name']
-        data['balance'] = cash
-        await FSMUsers.next()
-        await bot.send_message(chat_id=callback.message.chat.id,
-                               text=f'Баланс {user} пополнен на {cash}\nВведите дату пополнения счета',
-                               reply_markup=transfer_date_keyboard)
-
-
-async def balance_user_message(message: types.Message, state: FSMContext):
-    """Ввод данных о пополнении баланса через сообщение"""
-    async with state.proxy() as data:
-        user = data['user_name']
-        data['balance'] = message.text
-        await FSMUsers.next()
-        await message.answer(f'Баланс {user} пополнен на {message.text}\nВведите дату пополнения счета',
-                             reply_markup=transfer_date_keyboard)
-
-
-async def transfer_date_user_button(callback: types.CallbackQuery, state: FSMContext):
-    """Ввод даты перевода за использование VPN через Inline клавиатуру, выход из FSM"""
-    user_transfer_date = callback.data.split('*')[1]
-    async with state.proxy() as data:
-        data['transfer_date'] = user_transfer_date
-        update_balance_and_date_for_user(data['user_name'], data['balance'], data['transfer_date'])
-        await bot.send_message(chat_id=callback.message.chat.id,
-                               text=f'Баланс успешно пополнен',
-                               reply_markup=kb_users_list)
-    await state.finish()
-
-
-async def transfer_date_user_message(message: types.Message, state: FSMContext):
-    """Ввод даты перевода за использование VPN через сообщение, выход из FSM"""
-    if check_date(message):
+    if type(request) == types.CallbackQuery:
+        cash = request.data.split('*')[1]
         async with state.proxy() as data:
-            data['transfer_date'] = message.text
-            update_balance_and_date_for_user(data['user_name'], data['balance'], data['transfer_date'])
-            await message.answer('Данные успешно добавлены', reply_markup=kb_users_list)
-        await state.finish()
+            user = data['user_name']
+            data['balance'] = cash
+            await FSMUsers.next()
+            await bot.send_message(chat_id=request.message.chat.id,
+                                   text=f'Баланс {user} пополнен на {cash}\nВведите дату пополнения счета',
+                                   reply_markup=transfer_date_keyboard)
     else:
-        await message.answer('Не верный формат')
+        async with state.proxy() as data:
+            user = data['user_name']
+            data['balance'] = request.text
+            await FSMUsers.next()
+            await request.answer(f'Баланс {user} пополнен на {request.text}\nВведите дату пополнения счета',
+                                 reply_markup=transfer_date_keyboard)
 
 
-async def cancel_fsm(message: types.Message, state: FSMContext):
-    """Выход из FSM при отправке сообщения 'отмена'"""
-    users = get_all_users_from_db()
-    current_state = await state.get_state()
-    if current_state is None:
-        return
-    await state.finish()
-    await message.answer('OK', reply_markup=kb_users_list)
-    await message.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
+async def transfer_date_user(request: types.CallbackQuery | types.Message, state: FSMContext):
+    """Ввод даты перевода за использование VPN через Inline клавиатуру, выход из FSM"""
+    if type(request) == types.CallbackQuery:
+        user_transfer_date = request.data.split('*')[1]
+        async with state.proxy() as data:
+            data['transfer_date'] = user_transfer_date
+            update_balance_and_date_for_user(data['user_name'], data['balance'], data['transfer_date'])
+            await bot.send_message(chat_id=request.message.chat.id,
+                                   text=f'Баланс успешно пополнен',
+                                   reply_markup=kb_users_list)
+            await state.finish()
+    else:
+        if check_date(request):
+            async with state.proxy() as data:
+                data['transfer_date'] = request.text
+                update_balance_and_date_for_user(data['user_name'], data['balance'], data['transfer_date'])
+                await request.answer('Данные успешно добавлены', reply_markup=kb_users_list)
+            await state.finish()
+        else:
+            await request.answer('Не верный формат')
 
 
 class FSMAddUser(StatesGroup):
@@ -192,23 +182,41 @@ async def add_description(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+async def cancel_fsm(callback: types.CallbackQuery):
+    """Выход из FSM при отправке сообщения 'отмена'"""
+    users = get_all_users_from_db()
+    await bot.send_message(chat_id=callback.message.chat.id,
+                           text='Список пользователей:',
+                           reply_markup=create_users_list_keyboard(users))
+
+
+async def delete_user(callback: types.CallbackQuery):
+    user = callback.data.split('*')[1]
+    delete_user_from_db(user)
+    users = get_all_users_from_db()
+    await bot.send_message(chat_id=callback.message.chat.id,
+                           text=f'Пользователь {user} успешно удален',
+                           reply_markup=create_users_list_keyboard(users))
+
+
 def register_handlers_users(dp: Dispatcher):
     dp.register_message_handler(start_bot, commands=['start'])
     dp.register_message_handler(get_user_list, text='Список пользователей')
-    dp.register_message_handler(get_debtors_list, text='Список должнков')
-    dp.register_message_handler(cancel_fsm, Text(equals='отмена', ignore_case=True), state="*")
+    dp.register_callback_query_handler(cancel_fsm, lambda callback: callback.data == 'back')
+    dp.register_callback_query_handler(delete_user, lambda callback: callback.data.split('*')[0] == 'delete_this_user')
+    dp.register_message_handler(get_debtors_list, text='Список должников')
     dp.register_callback_query_handler(get_user_menu, lambda callback: callback.data.split('*')[0] == 'user')
     dp.register_callback_query_handler(get_user_balance, lambda callback: callback.data.split('*')[0] == 'balance')
     dp.register_callback_query_handler(update_user_balance, lambda callback: callback.data.split('*')[0] == 'deposit',
                                        state=None)
-    dp.register_callback_query_handler(add_user_deposit_button,
+    dp.register_callback_query_handler(add_user_deposit,
                                        lambda callback: callback.data.split('*')[0] == 'money',
                                        state=FSMUsers.balance)
-    dp.register_message_handler(balance_user_message, state=FSMUsers.balance)
-    dp.register_callback_query_handler(transfer_date_user_button,
+    dp.register_message_handler(add_user_deposit, state=FSMUsers.balance)
+    dp.register_callback_query_handler(transfer_date_user,
                                        lambda callback: callback.data.split('*')[0] == 'date_expiration',
                                        state=FSMUsers.transfer_date)
-    dp.register_message_handler(transfer_date_user_message, state=FSMUsers.transfer_date)
+    dp.register_message_handler(transfer_date_user, state=FSMUsers.transfer_date)
 
     dp.register_message_handler(start_fsm_add_user, text='Добавить пользователя')
     dp.register_message_handler(add_new_user_name, state=FSMAddUser.user_name)
@@ -221,3 +229,4 @@ def register_handlers_users(dp: Dispatcher):
                                        state=FSMAddUser.date_expiration)
     dp.register_message_handler(add_date_expiration, state=FSMAddUser.date_expiration)
     dp.register_message_handler(add_description, state=FSMAddUser.description)
+
