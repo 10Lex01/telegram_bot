@@ -1,6 +1,5 @@
 from typing import Dict
-
-from handlers.service import calculate_expiration_date
+from dateutil.relativedelta import relativedelta
 from . import tables
 from .database import Session
 
@@ -24,12 +23,11 @@ def get_user_balance_from_db(user_name):
     return user
 
 
-def update_balance_and_date_for_user(user_name, balance, transfer_date):
-    date_expiration = calculate_expiration_date(date=transfer_date, balance=balance)
+def update_balance_and_date_for_user(user_name, balance):
     with Session() as session:
         user = session.query(tables.User).filter_by(user_name=user_name).first()
         user.balance += int(balance)
-        user.date_expiration = date_expiration
+        user.date_expiration += relativedelta(months=int(balance)//100)
         session.commit()
 
 

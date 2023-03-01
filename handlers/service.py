@@ -15,12 +15,16 @@ def check_date(message):
             return False
         if not y > 2020:
             return False
-    except Exception:
+    except:
         return False
     return True
 
 
-def calculate_expiration_date(date, balance):
-    monthly_balance = int(int(balance) // 100)
-    date = datetime.strptime(date, "%d.%m.%Y").date() + relativedelta(months=monthly_balance)
-    return date
+def calculate_expiration_date(start_date, balance):
+    month_count = int(int(balance) // 100)
+    finish_date = datetime.strptime(start_date, "%d.%m.%Y").date() + relativedelta(months=month_count)
+    return finish_date
+
+
+def is_debtor(user):
+    return datetime.now().date() >= user.date_expiration

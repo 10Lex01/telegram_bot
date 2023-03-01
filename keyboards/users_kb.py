@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from datetime import datetime, timedelta
+from handlers.service import is_debtor
 
 # Клавиатура - Список пользователей и Список должников
 kb_users_list = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -40,7 +41,7 @@ def create_user_keyboard(username):
     button2 = InlineKeyboardButton(text='Пополнить', callback_data=f'deposit*{username}')
     button3 = InlineKeyboardButton(text='Удалить', callback_data=f'delete_this_user*{username}')
     button4 = InlineKeyboardButton(text='Назад', callback_data='back')
-    return keyboard.add(button1).insert(button2).insert(button3).insert(button4)
+    return keyboard.add(button1).insert(button2).insert(button3).add(button4)
 
 
 def create_users_list_keyboard(users):
@@ -52,10 +53,11 @@ def create_users_list_keyboard(users):
     return kb_users.add(*buttons)
 
 
-def create_debtors_keyboard(debtors):
+def create_debtors_keyboard(users):
     kb_debtors = InlineKeyboardMarkup(row_width=2)
     buttons = []
-    for name in debtors:
-        button = InlineKeyboardButton(text=name, callback_data=name)
-        buttons.append(button)
+    for user in users:
+        if is_debtor(user):
+            button = InlineKeyboardButton(text=f'{user.user_name}', callback_data=f'debtor*{user.user_name}')
+            buttons.append(button)
     return kb_debtors.add(*buttons)
