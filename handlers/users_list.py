@@ -1,6 +1,5 @@
-from datetime import datetime
 from aiogram import types, Dispatcher
-from database.services import add_to_database, get_all_users_from_db, get_user_balance_from_db, \
+from database.services import add_to_db_users, get_all_users_from_db, get_user_balance_from_db, \
     update_balance_and_date_for_user, delete_user_from_db
 from handlers.service import check_date, calculate_expiration_date
 from keyboards import kb_users_list, create_users_list_keyboard, create_debtors_keyboard,\
@@ -10,16 +9,15 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 
-
 async def start_bot(message: types.Message):
     """Запуск бота"""
     await bot.send_message(message.from_user.id, 'Сейчас узнаем кто нам задолжал!', reply_markup=kb_users_list)
 
 
-async def get_user_list(message: types.Message):
+async def get_user_list(request: types.Message | types.InlineKeyboardMarkup):
     """Открывает клавиатуру списка пользователей"""
     users = get_all_users_from_db()
-    await message.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
+    await request.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
 
 
 async def get_debtors_list(message: types.Message):
@@ -177,7 +175,7 @@ async def add_description(message: types.Message, state: FSMContext):
     """Отлавливаем примечание"""
     async with state.proxy() as data:
         data['description'] = message.text
-        add_to_database(data)
+        add_to_db_users(data)
         await message.answer('Данные успешно добавлены', reply_markup=kb_users_list)
     await state.finish()
 
@@ -229,4 +227,3 @@ def register_handlers_users(dp: Dispatcher):
                                        state=FSMAddUser.date_expiration)
     dp.register_message_handler(add_date_expiration, state=FSMAddUser.date_expiration)
     dp.register_message_handler(add_description, state=FSMAddUser.description)
-

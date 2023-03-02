@@ -41,7 +41,8 @@ def create_user_keyboard(username):
     button2 = InlineKeyboardButton(text='Пополнить', callback_data=f'deposit*{username}')
     button3 = InlineKeyboardButton(text='Удалить', callback_data=f'delete_this_user*{username}')
     button4 = InlineKeyboardButton(text='Назад', callback_data='back')
-    return keyboard.add(button1).insert(button2).insert(button3).add(button4)
+    button5 = InlineKeyboardButton(text='Последние операции', callback_data='last_operations')
+    return keyboard.add(button1).insert(button2).insert(button5).insert(button3).add(button4)
 
 
 def create_users_list_keyboard(users):

@@ -4,7 +4,7 @@ from . import tables
 from .database import Session
 
 
-def add_to_database(data: Dict) -> None:
+def add_to_db_users(data: Dict) -> None:
     with Session() as session:
         user = tables.User(**data)
         session.add(user)
