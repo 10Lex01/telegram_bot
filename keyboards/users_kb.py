@@ -54,11 +54,10 @@ def create_users_list_keyboard(users):
     return kb_users.add(*buttons)
 
 
-def create_debtors_keyboard(users):
+def create_debtors_keyboard(debtors_list):
     kb_debtors = InlineKeyboardMarkup(row_width=2)
     buttons = []
-    for user in users:
-        if is_debtor(user):
-            button = InlineKeyboardButton(text=f'{user.user_name}', callback_data=f'debtor*{user.user_name}')
-            buttons.append(button)
+    for debtor in debtors_list:
+        button = InlineKeyboardButton(text=f'{debtor.user_name}', callback_data=f'debtor*{debtor.user_name}')
+        buttons.append(button)
     return kb_debtors.add(*buttons)

@@ -1,7 +1,7 @@
 from aiogram import types, Dispatcher
 from database.services import add_to_db_users, get_all_users_from_db, get_user_balance_from_db, \
     update_balance_and_date_for_user, delete_user_from_db
-from handlers.service import check_date, calculate_expiration_date
+from handlers.service import check_date, calculate_expiration_date, is_debtor
 from keyboards import kb_users_list, create_users_list_keyboard, create_debtors_keyboard,\
      create_user_keyboard, balance_keyboard, transfer_date_keyboard
 from create_bot import bot
@@ -23,7 +23,14 @@ async def get_user_list(request: types.Message | types.InlineKeyboardMarkup):
 async def get_debtors_list(message: types.Message):
     """Открывает клавиатуру списка должников"""
     users = get_all_users_from_db()
-    await message.answer('Список должников:', reply_markup=create_debtors_keyboard(users))
+    debtors_list = []
+    for user in users:
+        if is_debtor(user):
+            debtors_list.append(user)
+    if len(debtors_list) == 0:
+        await message.answer('Должников нет')
+    else:
+        await message.answer('Список должников:', reply_markup=create_debtors_keyboard(debtors_list))
 
 
 async def get_user_menu(callback: types.CallbackQuery):
