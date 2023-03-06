@@ -1,8 +1,6 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from database.services import get_all_users_from_db
-
 
 def check_date(message):
     if not len(message.text.split('.')) == 3:

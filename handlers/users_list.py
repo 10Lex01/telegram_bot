@@ -1,8 +1,8 @@
 from aiogram import types, Dispatcher
 from database.services import add_to_db_users, get_all_users_from_db, get_user_balance_from_db, \
-    update_balance_and_date_for_user, delete_user_from_db
+    update_balance_and_date_for_user, delete_user_from_db, create_operation
 from handlers.service import check_date, calculate_expiration_date, is_debtor
-from keyboards import kb_users_list, create_users_list_keyboard, create_debtors_keyboard,\
+from keyboards import kb_main, create_users_list_keyboard,\
      create_user_keyboard, balance_keyboard, transfer_date_keyboard
 from create_bot import bot
 from aiogram.dispatcher import FSMContext
@@ -11,7 +11,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 async def start_bot(message: types.Message):
     """Запуск бота"""
-    await bot.send_message(message.from_user.id, 'Сейчас узнаем кто нам задолжал!', reply_markup=kb_users_list)
+    await bot.send_message(message.from_user.id, 'Сейчас узнаем кто нам задолжал!', reply_markup=kb_main)
 
 
 async def get_user_list(request: types.Message | types.InlineKeyboardMarkup):
@@ -30,7 +30,7 @@ async def get_debtors_list(message: types.Message):
     if len(debtors_list) == 0:
         await message.answer('Должников нет')
     else:
-        await message.answer('Список должников:', reply_markup=create_debtors_keyboard(debtors_list))
+        await message.answer('Список должников:', reply_markup=create_users_list_keyboard(debtors_list))
 
 
 async def get_user_menu(callback: types.CallbackQuery):
@@ -95,18 +95,18 @@ async def transfer_date_user(request: types.CallbackQuery | types.Message, state
     if type(request) == types.CallbackQuery:
         user_transfer_date = request.data.split('*')[1]
         async with state.proxy() as data:
-            data['transfer_date'] = user_transfer_date
             update_balance_and_date_for_user(data['user_name'], data['balance'])
+            create_operation(user_name=data['user_name'], summ=data['balance'], transfer_date=user_transfer_date)
             await bot.send_message(chat_id=request.message.chat.id,
                                    text=f'Баланс успешно пополнен',
-                                   reply_markup=kb_users_list)
+                                   reply_markup=kb_main)
             await state.finish()
     else:
         if check_date(request):
             async with state.proxy() as data:
-                data['transfer_date'] = request.text
                 update_balance_and_date_for_user(data['user_name'], data['balance'])
-                await request.answer('Данные успешно добавлены', reply_markup=kb_users_list)
+                create_operation(user_name=data['user_name'], summ=data['balance'], transfer_date=request.text)
+                await request.answer('Данные успешно добавлены', reply_markup=kb_main)
             await state.finish()
         else:
             await request.answer('Не верный формат')
@@ -156,23 +156,23 @@ async def add_start_user_balance(request: types.CallbackQuery | types.Message, s
 async def add_date_expiration(request: types.CallbackQuery | types.Message, state: FSMContext) -> None:
     """Отлавливаем дату истечения срока оплаты"""
     if type(request) == types.CallbackQuery:
-        date_expiration = request.data.split('*')[1]
+        transfer_date = request.data.split('*')[1]
         async with state.proxy() as data:
-            # formated_date = datetime.strptime(date_expiration, "%d.%m.%Y").date()
-            data['date_expiration'] = calculate_expiration_date(date_expiration, data['balance'])
+            data['transfer_date'] = transfer_date
+            data['date_expiration'] = calculate_expiration_date(transfer_date, data['balance'])
             await bot.send_message(chat_id=request.message.chat.id,
-                                   text='Введите примечание для пользователя', reply_markup=kb_users_list)
+                                   text='Введите примечание для пользователя', reply_markup=kb_main)
         await FSMAddUser.description.set()
     else:
         if check_date(request):
             async with state.proxy() as data:
                 try:
-                    # formated_date = datetime.strptime(request.text, "%d.%m.%Y").date()
+                    data['transfer_date'] = request.text
                     data['date_expiration'] = calculate_expiration_date(request.text, data['balance'])
                 except ValueError:
                     await request.reply('Введите дату в формате: ДД.ММ.ГГГГ')
                     return
-                await request.answer('Введите примечание для пользователя', reply_markup=kb_users_list)
+                await request.answer('Введите примечание для пользователя', reply_markup=kb_main)
             await FSMAddUser.description.set()
         else:
             await request.reply('Не верный формат\nВведите дату в формате: ДД.ММ.ГГГГ')
@@ -182,8 +182,10 @@ async def add_description(message: types.Message, state: FSMContext):
     """Отлавливаем примечание"""
     async with state.proxy() as data:
         data['description'] = message.text
-        add_to_db_users(data)
-        await message.answer('Данные успешно добавлены', reply_markup=kb_users_list)
+        transfer_date = data['transfer_date']
+        del data['transfer_date']
+        add_to_db_users(data, transfer_date)
+        await message.answer('Данные успешно добавлены', reply_markup=kb_main)
     await state.finish()
 
 
@@ -204,10 +206,19 @@ async def delete_user(callback: types.CallbackQuery):
                            reply_markup=create_users_list_keyboard(users))
 
 
+async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+    await state.finish()
+    await callback.message.answer('OK', reply_markup=kb_main)
+
+
 def register_handlers_users(dp: Dispatcher):
     dp.register_message_handler(start_bot, commands=['start'])
     dp.register_message_handler(get_user_list, text='Список пользователей')
     dp.register_callback_query_handler(back_function_for_user, lambda callback: callback.data == 'back')
+    dp.register_callback_query_handler(cancel_handler, lambda callback: callback.data == 'cancel', state="*")
     dp.register_callback_query_handler(delete_user, lambda callback: callback.data.split('*')[0] == 'delete_this_user')
     dp.register_message_handler(get_debtors_list, text='Список должников')
     dp.register_callback_query_handler(get_user_menu, lambda callback: callback.data.split('*')[0] == 'user')

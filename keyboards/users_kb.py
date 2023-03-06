@@ -1,38 +1,38 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from datetime import datetime, timedelta
-from handlers.service import is_debtor
 
 # Клавиатура - Список пользователей и Список должников
-kb_users_list = ReplyKeyboardMarkup(resize_keyboard=True)
+kb_main = ReplyKeyboardMarkup(resize_keyboard=True)
 b1 = KeyboardButton('Список пользователей')
 b2 = KeyboardButton('Список должников')
-b8 = KeyboardButton('Добавить пользователя')
-kb_users_list.add(b1).insert(b2).add(b8)
+b3 = KeyboardButton('Добавить пользователя')
+kb_main.add(b1).insert(b2).add(b3)
 
 # Клавиатура - Список должников
 kb_debtors_list = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-b3 = KeyboardButton('Список должников')
-kb_debtors_list.insert(b3)
+b4 = KeyboardButton('Список должников')
+kb_debtors_list.insert(b4)
 
 # Клавиатура для пополнения баланса пользователя
 balance_keyboard = InlineKeyboardMarkup(row_width=3)
-b4 = InlineKeyboardButton(text='100', callback_data='money*100')
-b5 = InlineKeyboardButton(text='200', callback_data='money*200')
-b6 = InlineKeyboardButton(text='300', callback_data='money*300')
-balance_keyboard.add(b4).insert(b5).insert(b6)
+b5 = InlineKeyboardButton(text='100', callback_data='money*100')
+b6 = InlineKeyboardButton(text='200', callback_data='money*200')
+b7 = InlineKeyboardButton(text='300', callback_data='money*300')
+b_cancel_inline = InlineKeyboardButton(text='Отмена', callback_data='cancel')
+balance_keyboard.add(b5).insert(b6).insert(b7).add(b_cancel_inline)
 
 # Клавиатура для ввода даты активации пользователя
 yesterday = datetime.now() - timedelta(days=1)
 today = datetime.now()
 tomorrow = datetime.now() - timedelta(days=-1)
 transfer_date_keyboard = InlineKeyboardMarkup(row_width=3)
-b5 = InlineKeyboardButton(text=f'{yesterday.strftime("%d.%m.%Y")}',
+b9 = InlineKeyboardButton(text=f'{yesterday.strftime("%d.%m.%Y")}',
                           callback_data=f'date_expiration*{yesterday.strftime("%d.%m.%Y")}')
-b6 = InlineKeyboardButton(text=f'{today.strftime("%d.%m.%Y")}',
-                          callback_data=f'date_expiration*{today.strftime("%d.%m.%Y")}')
-b7 = InlineKeyboardButton(text=f'{tomorrow.strftime("%d.%m.%Y")}',
-                          callback_data=f'date_expiration*{tomorrow.strftime("%d.%m.%Y")}')
-transfer_date_keyboard.add(b5).insert(b6).insert(b7)
+b10 = InlineKeyboardButton(text=f'{today.strftime("%d.%m.%Y")}',
+                           callback_data=f'date_expiration*{today.strftime("%d.%m.%Y")}')
+b11 = InlineKeyboardButton(text=f'{tomorrow.strftime("%d.%m.%Y")}',
+                           callback_data=f'date_expiration*{tomorrow.strftime("%d.%m.%Y")}')
+transfer_date_keyboard.add(b9).insert(b10).insert(b11).add(b_cancel_inline)
 
 
 def create_user_keyboard(username):
@@ -52,12 +52,3 @@ def create_users_list_keyboard(users):
         button = InlineKeyboardButton(text=f'{user.user_name}', callback_data=f'user*{user.user_name}')
         buttons.append(button)
     return kb_users.add(*buttons)
-
-
-def create_debtors_keyboard(debtors_list):
-    kb_debtors = InlineKeyboardMarkup(row_width=2)
-    buttons = []
-    for debtor in debtors_list:
-        button = InlineKeyboardButton(text=f'{debtor.user_name}', callback_data=f'debtor*{debtor.user_name}')
-        buttons.append(button)
-    return kb_debtors.add(*buttons)
