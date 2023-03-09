@@ -25,3 +25,6 @@ class Operation(Base):
     summ = Column(Integer)
     date_operation = Column(Date)
     user_id = Column(Integer, ForeignKey('users.id'))
+
+    def __repr__(self):
+        return f'{self.user_id}'

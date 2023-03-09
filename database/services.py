@@ -52,3 +52,9 @@ def create_operation(summ, transfer_date, user_id=None, user_name=None):
             operation = tables.Operation(user_id=id_user, date_operation=date_operation, summ=int(summ))
         session.add(operation)
         session.commit()
+
+
+def get_all_operations_from_db():
+    with Session() as session:
+        user_operations = session.query(tables.Operation).all()
+    return user_operations
