@@ -1,7 +1,6 @@
 from aiogram import types, Dispatcher
 from database.services import add_to_db_users, get_all_users_from_db, get_user_balance_from_db, \
-    update_balance_and_date_for_user, delete_user_from_db, create_operation, get_all_operations_from_db, \
-    get_user_operations_from_db
+    update_balance_and_date_for_user, delete_user_from_db, create_operation, get_user_operations_from_db
 from handlers.service import check_date, calculate_expiration_date, is_debtor
 from create_bot import bot
 from aiogram.dispatcher import FSMContext, filters
@@ -9,6 +8,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from keyboards.users_kb import create_main_keyboard, create_balance_keyboard, create_transfer_date_keyboard, \
     create_users_list_keyboard, create_user_keyboard
 from config import ID_ADMIN_3, ID_ADMIN_1
+from typing import Union
 
 
 async def start_bot(message: types.Message):
@@ -16,7 +16,7 @@ async def start_bot(message: types.Message):
     await bot.send_message(message.from_user.id, 'Сейчас узнаем кто нам задолжал!', reply_markup=create_main_keyboard())
 
 
-async def get_user_list(request: types.Message | types.InlineKeyboardMarkup):
+async def get_user_list(request: Union[types.Message, types.InlineKeyboardMarkup]):
     """Открывает клавиатуру списка пользователей"""
     users = get_all_users_from_db()
     await request.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
@@ -84,7 +84,7 @@ async def update_user_balance(callback: types.CallbackQuery, state=None):
                                reply_markup=create_balance_keyboard())
 
 
-async def add_user_deposit(request: types.CallbackQuery | types.Message, state: FSMContext):
+async def add_user_deposit(request: Union[types.CallbackQuery, types.Message], state: FSMContext):
     """Ввод данных о пополнении баланса через Inline клавиатуру"""
     if type(request) == types.CallbackQuery:
         cash = request.data.split('*')[1]
@@ -104,7 +104,7 @@ async def add_user_deposit(request: types.CallbackQuery | types.Message, state: 
                                  reply_markup=create_transfer_date_keyboard())
 
 
-async def transfer_date_user(request: types.CallbackQuery | types.Message, state: FSMContext):
+async def transfer_date_user(request: Union[types.CallbackQuery, types.Message], state: FSMContext):
     """Ввод даты перевода за использование VPN через Inline клавиатуру, выход из FSM"""
     if type(request) == types.CallbackQuery:
         user_transfer_date = request.data.split('*')[1]
@@ -147,7 +147,7 @@ async def add_new_user_name(message: types.Message, state: FSMContext):
     await message.answer('Введите стартовый баланс', reply_markup=create_balance_keyboard())
 
 
-async def add_start_user_balance(request: types.CallbackQuery | types.Message, state: FSMContext):
+async def add_start_user_balance(request: Union[types.CallbackQuery, types.Message], state: FSMContext):
     """Отлавливаем баланс, запрашиваем дату истечения срока оплаты"""
     if type(request) == types.CallbackQuery:
         balance = request.data.split('*')[1]
@@ -167,7 +167,7 @@ async def add_start_user_balance(request: types.CallbackQuery | types.Message, s
         await request.answer('Введите дату пополнения счета', reply_markup=create_transfer_date_keyboard())
 
 
-async def add_date_expiration(request: types.CallbackQuery | types.Message, state: FSMContext) -> None:
+async def add_date_expiration(request: Union[types.CallbackQuery, types.Message], state: FSMContext) -> None:
     """Отлавливаем дату истечения срока оплаты"""
     if type(request) == types.CallbackQuery:
         transfer_date = request.data.split('*')[1]
