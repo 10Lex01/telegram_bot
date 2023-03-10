@@ -58,3 +58,12 @@ def get_all_operations_from_db():
     with Session() as session:
         user_operations = session.query(tables.Operation).all()
     return user_operations
+
+
+def get_user_operations_from_db(user_id, limit=None):
+    with Session() as session:
+        if limit:
+            user_operations = session.query(tables.Operation).filter_by(user_id=user_id).order_by(tables.Operation.date_operation.desc()).limit(limit)
+        else:
+            user_operations = session.query(tables.Operation).filter_by(user_id=user_id).order_by(tables.Operation.date_operation.desc()).limit(5)
+    return user_operations

@@ -1,13 +1,14 @@
 from aiogram import types, Dispatcher
 from database.services import add_to_db_users, get_all_users_from_db, get_user_balance_from_db, \
-    update_balance_and_date_for_user, delete_user_from_db, create_operation, get_all_operations_from_db
+    update_balance_and_date_for_user, delete_user_from_db, create_operation, get_all_operations_from_db, \
+    get_user_operations_from_db
 from handlers.service import check_date, calculate_expiration_date, is_debtor
 from create_bot import bot
 from aiogram.dispatcher import FSMContext, filters
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from keyboards.users_kb import create_main_keyboard, create_balance_keyboard, create_transfer_date_keyboard, \
     create_users_list_keyboard, create_user_keyboard
-from config import ID_ADMIN_3
+from config import ID_ADMIN_3, ID_ADMIN_1
 
 
 async def start_bot(message: types.Message):
@@ -58,13 +59,13 @@ async def get_user_balance(callback: types.CallbackQuery):
 async def get_user_last_operations(callback: types.CallbackQuery):
     """Inline клавиатура "Последние операции" для пользователя"""
     user_name = callback.data.split('*')[1]
-    user_operation = get_all_operations_from_db()
     user = get_user_balance_from_db(user_name)
-    for i in user_operation:
-        if i.user_id == user.id:
-            await bot.send_message(chat_id=callback.message.chat.id,
-                                   text=f'{i}. Дата операции {i.date_operation.strftime("%d.%m.%Y")}\n'
-                                        f'Сумма {i.summ} ₽')
+    user_operations = get_user_operations_from_db(user.id)
+    string = ''
+    for operation in enumerate(user_operations):
+        string = string + f'{operation[0] + 1}. Дата операции {operation[1].date_operation.strftime("%d.%m.%Y")}\n' \
+                          f'Сумма {operation[1].summ}\n'
+    await bot.send_message(chat_id=callback.message.chat.id, text=string)
 
 
 class FSMUsers(StatesGroup):
@@ -228,9 +229,9 @@ async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
 
 
 def register_handlers_users(dp: Dispatcher):
-    # dp.register_message_handler(start_bot, filters.IDFilter(user_id=467611229), commands=['start'])
-    dp.register_message_handler(start_bot, filters.IDFilter(user_id=ID_ADMIN_3), commands=['start'])
+    dp.register_message_handler(start_bot, filters.IDFilter(user_id=ID_ADMIN_1), commands=['start'])
     # dp.register_message_handler(start_bot, filters.IDFilter(user_id=467611231), commands=['start'])
+    dp.register_message_handler(start_bot, filters.IDFilter(user_id=ID_ADMIN_3), commands=['start'])
     dp.register_message_handler(get_user_list, text='Список пользователей')
     dp.register_callback_query_handler(back_function_for_user, lambda callback: callback.data == 'back')
     dp.register_callback_query_handler(cancel_handler, lambda callback: callback.data == 'cancel', state="*")
