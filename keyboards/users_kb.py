@@ -57,3 +57,11 @@ def create_users_list_keyboard(users):
         button = InlineKeyboardButton(text=f'{user.user_name}', callback_data=f'user*{user.user_name}')
         buttons.append(button)
     return kb_users.add(*buttons)
+
+
+def confirm_delete_user_keyboards(username):
+    confirm_delete_kb = InlineKeyboardMarkup(row_width=2)
+    button1 = InlineKeyboardButton(text='Да', callback_data=f'yes*{username}')
+    button2 = InlineKeyboardButton(text='Нет', callback_data=f'no*{username}')
+    confirm_delete_kb.add(button1).insert(button2)
+    return confirm_delete_kb

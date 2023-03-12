@@ -6,8 +6,8 @@ from create_bot import bot
 from aiogram.dispatcher import FSMContext, filters
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from keyboards.users_kb import create_main_keyboard, create_balance_keyboard, create_transfer_date_keyboard, \
-    create_users_list_keyboard, create_user_keyboard
-from config import ID_ADMIN_3, ID_ADMIN_1
+    create_users_list_keyboard, create_user_keyboard, confirm_delete_user_keyboards
+from config import ID_ADMIN_1, ID_ADMIN_2, ID_ADMIN_3
 from typing import Union
 
 
@@ -99,6 +99,7 @@ async def add_user_deposit(request: Union[types.CallbackQuery, types.Message], s
         async with state.proxy() as data:
             user = data['user_name']
             data['balance'] = request.text
+            await request.delete()
             await FSMUsers.next()
             await request.answer(f'Баланс {user} пополнен на {request.text}\nВведите дату пополнения счета',
                                  reply_markup=create_transfer_date_keyboard())
@@ -154,7 +155,7 @@ async def add_start_user_balance(request: Union[types.CallbackQuery, types.Messa
         async with state.proxy() as data:
             data['balance'] = int(balance)
         await FSMAddUser.date_expiration.set()
-        await bot.send_message(chat_id=request.message.chat.id, text='Введите дату пополнения счета',
+        await bot.send_message(chat_id=request.message.chat.id, text=f'Введите дату пополнения счета на {int(balance)}',
                                reply_markup=create_transfer_date_keyboard())
     else:
         async with state.proxy() as data:
@@ -164,7 +165,8 @@ async def add_start_user_balance(request: Union[types.CallbackQuery, types.Messa
                 await request.reply('Введите число')
                 return
         await FSMAddUser.date_expiration.set()
-        await request.answer('Введите дату пополнения счета', reply_markup=create_transfer_date_keyboard())
+        await request.answer(f'Введите дату пополнения счета на {int(request.text)}',
+                             reply_markup=create_transfer_date_keyboard())
 
 
 async def add_date_expiration(request: Union[types.CallbackQuery, types.Message], state: FSMContext) -> None:
@@ -211,13 +213,28 @@ async def back_function_for_user(callback: types.CallbackQuery):
                            reply_markup=create_users_list_keyboard(users))
 
 
+async def confirm_delete_user(callback: types.CallbackQuery):
+    user = callback.data.split('*')[1]
+    await bot.send_message(chat_id=callback.message.chat.id,
+                           text=f'Вы уверены что хотите удалить пользователя {user}?',
+                           reply_markup=confirm_delete_user_keyboards(user))
+
+
 async def delete_user(callback: types.CallbackQuery):
     user = callback.data.split('*')[1]
-    delete_user_from_db(user)
     users = get_all_users_from_db()
-    await bot.send_message(chat_id=callback.message.chat.id,
-                           text=f'Пользователь {user} успешно удален',
-                           reply_markup=create_users_list_keyboard(users))
+    if callback.data.split('*')[0] == 'yes':
+        delete_user_from_db(user)
+        users = get_all_users_from_db()
+        await bot.send_message(chat_id=callback.message.chat.id,
+                               text=f'Пользователь {user} успешно удален')
+        await bot.send_message(chat_id=callback.message.chat.id,
+                               text='Список пользователей:',
+                               reply_markup=create_users_list_keyboard(users))
+    else:
+        await bot.send_message(chat_id=callback.message.chat.id,
+                               text='Список пользователей:',
+                               reply_markup=create_users_list_keyboard(users))
 
 
 async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -230,12 +247,15 @@ async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
 
 def register_handlers_users(dp: Dispatcher):
     dp.register_message_handler(start_bot, filters.IDFilter(user_id=ID_ADMIN_1), commands=['start'])
-    # dp.register_message_handler(start_bot, filters.IDFilter(user_id=467611231), commands=['start'])
+    dp.register_message_handler(start_bot, filters.IDFilter(user_id=ID_ADMIN_2), commands=['start'])
     dp.register_message_handler(start_bot, filters.IDFilter(user_id=ID_ADMIN_3), commands=['start'])
     dp.register_message_handler(get_user_list, text='Список пользователей')
     dp.register_callback_query_handler(back_function_for_user, lambda callback: callback.data == 'back')
     dp.register_callback_query_handler(cancel_handler, lambda callback: callback.data == 'cancel', state="*")
-    dp.register_callback_query_handler(delete_user, lambda callback: callback.data.split('*')[0] == 'delete_this_user')
+    dp.register_callback_query_handler(confirm_delete_user,
+                                       lambda callback: callback.data.split('*')[0] == 'delete_this_user')
+    dp.register_callback_query_handler(delete_user, lambda callback: callback.data.split('*')[0] == 'yes')
+    dp.register_callback_query_handler(delete_user, lambda callback: callback.data.split('*')[0] == 'no')
     dp.register_message_handler(get_debtors_list, text='Список должников')
     dp.register_callback_query_handler(get_user_menu, lambda callback: callback.data.split('*')[0] == 'user')
     dp.register_callback_query_handler(get_user_balance, lambda callback: callback.data.split('*')[0] == 'balance')

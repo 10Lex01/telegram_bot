@@ -38,7 +38,9 @@ def update_balance_and_date_for_user(user_name, balance):
 
 def delete_user_from_db(user_name):
     with Session() as session:
-        session.query(tables.User).filter_by(user_name=user_name).delete()
+        user = session.query(tables.User).filter_by(user_name=user_name).first()
+        session.delete(user)
+        session.query(tables.Operation).filter_by(user_id=user.id).delete()
         session.commit()
 
 
@@ -63,7 +65,9 @@ def get_all_operations_from_db():
 def get_user_operations_from_db(user_id, limit=None):
     with Session() as session:
         if limit:
-            user_operations = session.query(tables.Operation).filter_by(user_id=user_id).order_by(tables.Operation.date_operation.desc()).limit(limit)
+            user_operations = session.query(tables.Operation).filter_by(user_id=user_id).\
+                order_by(tables.Operation.date_operation.desc()).limit(limit)
         else:
-            user_operations = session.query(tables.Operation).filter_by(user_id=user_id).order_by(tables.Operation.date_operation.desc()).limit(5)
+            user_operations = session.query(tables.Operation).filter_by(user_id=user_id).\
+                order_by(tables.Operation.date_operation.desc()).limit(5)
     return user_operations
