@@ -80,8 +80,9 @@ async def update_user_balance(callback: types.CallbackQuery, state=None):
         data['user_name'] = user
         await FSMUsers.balance.set()
         await bot.send_message(chat_id=callback.message.chat.id,
-                               text=f'Введите сумму пополнения для {user}:',
-                               reply_markup=create_balance_keyboard())
+                               text=f'Введите сумму пополнения для <b>{user}</b>:',
+                               reply_markup=create_balance_keyboard(),
+                               parse_mode='html')
 
 
 async def add_user_deposit(request: Union[types.CallbackQuery, types.Message], state: FSMContext):
@@ -93,16 +94,20 @@ async def add_user_deposit(request: Union[types.CallbackQuery, types.Message], s
             data['balance'] = cash
             await FSMUsers.next()
             await bot.send_message(chat_id=request.message.chat.id,
-                                   text=f'Баланс {user} пополнен на {cash}\nВведите дату пополнения счета',
-                                   reply_markup=create_transfer_date_keyboard())
+                                   text=f'Баланс <b>{user}</b> пополнен на <b>{cash}</b>'
+                                        f'\nВведите дату пополнения счета',
+                                   reply_markup=create_transfer_date_keyboard(),
+                                   parse_mode='html')
     else:
         async with state.proxy() as data:
             user = data['user_name']
             data['balance'] = request.text
             await request.delete()
             await FSMUsers.next()
-            await request.answer(f'Баланс {user} пополнен на {request.text}\nВведите дату пополнения счета',
-                                 reply_markup=create_transfer_date_keyboard())
+            await request.answer(f'Баланс <b>{user}</b> пополнен на <b>{request.text}</b>'
+                                 f'\nВведите дату пополнения счета',
+                                 reply_markup=create_transfer_date_keyboard(),
+                                 parse_mode='html')
 
 
 async def transfer_date_user(request: Union[types.CallbackQuery, types.Message], state: FSMContext):
@@ -186,12 +191,12 @@ async def add_date_expiration(request: Union[types.CallbackQuery, types.Message]
                     data['transfer_date'] = request.text
                     data['date_expiration'] = calculate_expiration_date(request.text, data['balance'])
                 except ValueError:
-                    await request.reply('Введите дату в формате: ДД.ММ.ГГГГ')
+                    await request.reply('Введите дату в формате: <b>ДД.ММ.ГГГГ</b>', parse_mode='html')
                     return
                 await request.answer('Введите примечание для пользователя', reply_markup=create_main_keyboard())
             await FSMAddUser.description.set()
         else:
-            await request.reply('Не верный формат\nВведите дату в формате: ДД.ММ.ГГГГ')
+            await request.reply('Не верный формат\nВведите дату в формате: <b>ДД.ММ.ГГГГ</b>', parse_mode='html')
 
 
 async def add_description(message: types.Message, state: FSMContext):
@@ -216,8 +221,9 @@ async def back_function_for_user(callback: types.CallbackQuery):
 async def confirm_delete_user(callback: types.CallbackQuery):
     user = callback.data.split('*')[1]
     await bot.send_message(chat_id=callback.message.chat.id,
-                           text=f'Вы уверены что хотите удалить пользователя {user}?',
-                           reply_markup=confirm_delete_user_keyboards(user))
+                           text=f'Удалить пользователя <b>{user}</b>?',
+                           reply_markup=confirm_delete_user_keyboards(user),
+                           parse_mode='html')
 
 
 async def delete_user(callback: types.CallbackQuery):
@@ -227,7 +233,8 @@ async def delete_user(callback: types.CallbackQuery):
         delete_user_from_db(user)
         users = get_all_users_from_db()
         await bot.send_message(chat_id=callback.message.chat.id,
-                               text=f'Пользователь {user} успешно удален')
+                               text=f'Пользователь <b>{user}</b> успешно удален',
+                               parse_mode='html')
         await bot.send_message(chat_id=callback.message.chat.id,
                                text='Список пользователей:',
                                reply_markup=create_users_list_keyboard(users))
