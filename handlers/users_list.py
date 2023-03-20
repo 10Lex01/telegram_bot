@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from aiogram import types, Dispatcher
 from database.services import add_to_db_users, get_all_users_from_db, get_user_balance_from_db, \
     update_balance_and_date_for_user, delete_user_from_db, create_operation, get_user_operations_from_db
@@ -19,7 +21,7 @@ async def start_bot(message: types.Message):
 async def get_user_list(request: Union[types.Message, types.InlineKeyboardMarkup]):
     """Открывает клавиатуру списка пользователей"""
     users = get_all_users_from_db()
-    await request.answer('Список пользователей:', reply_markup=create_users_list_keyboard(users))
+    await request.answer(f'Список пользователей ({len(users)}):', reply_markup=create_users_list_keyboard(users))
 
 
 async def get_debtors_list(message: types.Message):
@@ -32,7 +34,8 @@ async def get_debtors_list(message: types.Message):
     if len(debtors_list) == 0:
         await message.answer('Должников нет')
     else:
-        await message.answer('Список должников:', reply_markup=create_users_list_keyboard(debtors_list))
+        await message.answer(f'Список должников ({len(debtors_list)}):',
+                             reply_markup=create_users_list_keyboard(debtors_list))
 
 
 async def get_user_menu(callback: types.CallbackQuery):
@@ -48,12 +51,22 @@ async def get_user_balance(callback: types.CallbackQuery):
     """Inline клавиатура "Информация" для пользователя"""
     user_name = callback.data.split('*')[1]
     user = get_user_balance_from_db(user_name)
-    await bot.send_message(chat_id=callback.message.chat.id,
-                           text=f'Пользователь: {user.user_name}\n'
-                                f'Баланс: {user.balance} ₽\n'
-                                f'Дата истечения срока: {user.date_expiration.strftime("%d.%m.%Y")}\n'
-                                f'*{user.description}',
-                           reply_markup=create_user_keyboard(user.user_name))
+    if is_debtor(user):
+        days_of_delay = datetime.now().date()-user.date_expiration
+        await bot.send_message(chat_id=callback.message.chat.id,
+                               text=f'Пользователь: {user.user_name}\n'
+                                    f'Баланс: {user.balance} ₽\n'
+                                    f'Дата истечения срока: {user.date_expiration.strftime("%d.%m.%Y")}\n'
+                                    f'Количество дней просрочки: {days_of_delay.days} дней\n'
+                                    f'*{user.description}',
+                               reply_markup=create_user_keyboard(user.user_name))
+    else:
+        await bot.send_message(chat_id=callback.message.chat.id,
+                               text=f'Пользователь: {user.user_name}\n'
+                                    f'Баланс: {user.balance} ₽\n'
+                                    f'Дата истечения срока: {user.date_expiration.strftime("%d.%m.%Y")}\n'
+                                    f'*{user.description}',
+                               reply_markup=create_user_keyboard(user.user_name))
 
 
 async def get_user_last_operations(callback: types.CallbackQuery):
@@ -214,7 +227,7 @@ async def back_function_for_user(callback: types.CallbackQuery):
     """Выход из FSM при отправке сообщения 'отмена'"""
     users = get_all_users_from_db()
     await bot.send_message(chat_id=callback.message.chat.id,
-                           text='Список пользователей:',
+                           text=f'Список пользователей ({len(users)}):',
                            reply_markup=create_users_list_keyboard(users))
 
 
@@ -236,11 +249,11 @@ async def delete_user(callback: types.CallbackQuery):
                                text=f'Пользователь <b>{user}</b> успешно удален',
                                parse_mode='html')
         await bot.send_message(chat_id=callback.message.chat.id,
-                               text='Список пользователей:',
+                               text=f'Список пользователей ({len(users)}):',
                                reply_markup=create_users_list_keyboard(users))
     else:
         await bot.send_message(chat_id=callback.message.chat.id,
-                               text='Список пользователей:',
+                               text=f'Список пользователей ({len(users)}):',
                                reply_markup=create_users_list_keyboard(users))
 
 
